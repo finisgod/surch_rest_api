@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.demoauth.pojo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,17 +23,13 @@ import com.example.demoauth.configs.jwt.JwtUtils;
 import com.example.demoauth.models.ERole;
 import com.example.demoauth.models.Role;
 import com.example.demoauth.models.User;
-import com.example.demoauth.pojo.JwtResponse;
-import com.example.demoauth.pojo.LoginRequest;
-import com.example.demoauth.pojo.MessageResponse;
-import com.example.demoauth.pojo.SignupRequest;
 import com.example.demoauth.repository.RoleRepository;
 import com.example.demoauth.repository.UserRepository;
 import com.example.demoauth.service.UserDetailsImpl;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 public class AuthController {
 	
 	@Autowired
@@ -50,11 +47,11 @@ public class AuthController {
 	@Autowired
 	JwtUtils jwtUtils;
 
-	@CrossOrigin
+
     @PostMapping("/testJson")
     public LoginRequest testJson(@RequestBody LoginRequest loginRequest ) {return loginRequest;}
 
-	@CrossOrigin
+
 	@PostMapping("/signin")
 	public ResponseEntity<?> authUser(@RequestBody LoginRequest loginRequest ) {
 		
@@ -78,7 +75,28 @@ public class AuthController {
 				roles));
 	}
 
-	@CrossOrigin
+	@PostMapping("/refresh")
+	public ResponseEntity<?> refresh(@RequestBody LoginRequest loginRequest) {
+
+		Authentication authentication = authenticationManager
+				.authenticate(new UsernamePasswordAuthenticationToken(
+						loginRequest.getUsername(),
+						loginRequest.getPassword()));
+
+		SecurityContextHolder.getContext().setAuthentication(authentication);
+		String jwt = jwtUtils.generateJwtToken(authentication);
+
+		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+		List<String> roles = userDetails.getAuthorities().stream()
+				.map(item -> item.getAuthority())
+				.collect(Collectors.toList());
+
+		return ResponseEntity.ok(new RefreshResponse(jwt,
+				userDetails.getUsername(),
+				userDetails.getPassword()));
+	}
+
+
 	@PostMapping("/signup")
 	public ResponseEntity<?> registerUser(@RequestBody SignupRequest signupRequest) {
 		
